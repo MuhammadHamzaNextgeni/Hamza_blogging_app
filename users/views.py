@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm  
 from .forms import CustomUserCreationForm
 from django.contrib import messages             
-from .messages import ACCOUNT_CREATION_SUCCESS_MESSAGE
+from .constants import ACCOUNT_CREATION_SUCCESS_MESSAGE
 # Create your views here.
 
 def signup_view(request):
