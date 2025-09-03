@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0 rounded">
+                <div class="card-body text-center p-5">
+                    
+                    <!-- Main welcome message -->
+                    <h1 class="display-4 mb-3">Welcome to the Blogging Platform! </h1>
+                    <p class="lead mb-4">Your place to share stories, read blogs, and connect with others.</p>
+
+                    <!-- Sign Up & Login buttons -->
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="{% url 'users:signup' %}" class="btn btn-success btn-lg px-4">Sign Up</a>
+                        <a href="{% url 'users:login' %}" class="btn btn-primary btn-lg px-4">Login</a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

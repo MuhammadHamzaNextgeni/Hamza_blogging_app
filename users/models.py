@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 # Create your models here.
 
 class User(AbstractUser):
+    
     # Adding the new bio field 
     bio = models.TextField(blank=True, null=True)  
     email = models.TextField(
