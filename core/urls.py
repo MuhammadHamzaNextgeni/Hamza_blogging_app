@@ -17,11 +17,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from users import views as user_views
+from users.serializers import CustomTokenObtainPairView
+from rest_framework_simplejwt.views import TokenRefreshView, TokenBlacklistView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', user_views.home_view, name='home'),  # Root URL serves home page
+    path('', user_views.home_view, name='home'),
     path('users/', include('users.urls')),
+    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
 ]
+
 
 
