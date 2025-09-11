@@ -12,6 +12,7 @@ class User(AbstractUser):
     # Adding the new bio field 
     bio = models.TextField(blank=True, null=True)  
     email = models.TextField(
+        unique=True,
         blank=False,
         null=False,
         validators=[custom_email_validator]

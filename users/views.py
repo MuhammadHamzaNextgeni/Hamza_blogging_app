@@ -14,7 +14,7 @@ from .decorators import jwt_login_required
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import redirect, render
 from django.contrib import messages
-from django.contrib.auth import get_user_model, authenticate
+from django.contrib.auth import get_user_model, authenticate, login
 from django.contrib.auth.decorators import login_required
 
 
@@ -42,6 +42,7 @@ def signup_view(request):
     return render(request, "users/signup.html", {"form": form})
 
 
+
 User = get_user_model()
 
 def login_view(request):
@@ -50,29 +51,28 @@ def login_view(request):
         password = request.POST.get("password")
 
         if not email or not password:
-            messages.error(request, "Please enter email and password.")
+            messages.error(request, constants.ENTER_EMAIL_PASSWORD_MESSAGE)
             return render(request, "users/login.html")
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            messages.error(request, "No account found with this email.")
+            messages.error(request, constants.NO_ACCOUNT_FOUND)
             return render(request, "users/login.html")
 
         if not user.check_password(password):
-            messages.error(request, "Invalid email or password.")
+            messages.error(request, constants.INVALID_EMAIL_MESSAGE)
             return render(request, "users/login.html")
 
-        # Generate JWT tokens
+        
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
-        # Set tokens in HttpOnly cookies
         response = redirect("users:dashboard")
         response.set_cookie("access_token", access_token, httponly=True, samesite="Strict")
         response.set_cookie("refresh_token", str(refresh), httponly=True, samesite="Strict")
 
-        messages.success(request, "You have successfully logged in.")
+        messages.success(request, constants.LOG_IN_SUCCESS_MESSAGE)
         return response
 
     return render(request, "users/login.html")
@@ -80,16 +80,11 @@ def login_view(request):
 
 def logout_view(request):
     response = redirect("users:login")
-    # Clear the JWT cookies
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
-    messages.success(request, "You have successfully logged out.")
+    messages.success(request, constants.LOGOUT_SUCCESS_MESSAGE)
     return response
 
-
-@login_required
-def dashboard_view(request):
-    return render(request, "users/dashboard.html")
 
 
 @jwt_login_required
