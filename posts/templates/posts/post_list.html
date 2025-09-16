@@ -1,0 +1,48 @@
+<!-- posts/templates/posts/post_list.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">All Posts</h2>
+
+    {% if posts %}
+        <div class="list-group">
+            {% for post in posts %}
+                <a href="{% url 'posts:post-detail' post.id %}" class="list-group-item list-group-item-action">
+                    <h5 class="mb-1">{{ post.title }}</h5>
+                    <p class="mb-1 text-muted">By {{ post.author.username }} | {{ post.created_at|date:"M d, Y" }}</p>
+                    <p class="mb-0">{{ post.content|truncatechars:120 }}</p>
+                </a>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-4">
+            {% if is_paginated %}
+                <nav>
+                    <ul class="pagination">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_obj.number }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    {% else %}
+        <!-- Removed create post link until PostCreateView is implemented -->
+        <p>No posts available yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
