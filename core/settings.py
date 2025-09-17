@@ -153,3 +153,9 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,                    
     "BLACKLIST_AFTER_ROTATION": True,                
 }
+
+# Redirect unauthenticated users to the correct login page
+LOGIN_URL = '/users/login/'
+
+# Redirect after successful login
+LOGIN_REDIRECT_URL = '/users/dashboard/'

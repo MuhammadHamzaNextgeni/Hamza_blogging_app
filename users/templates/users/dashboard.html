@@ -8,9 +8,14 @@
         <div class="col-md-8">
             <div class="card shadow-sm border-0 rounded">
                 <div class="card-body text-center p-5">
-                    <h1 class="card-title display-5 mb-3">Welcome to the Blog Platform, <strong>{{ user.username }}</strong>!</h1>
-                    <div class="d-flex justify-content-center">
-                        <a href="{% url 'users:logout' %}" class="btn btn-sm btn-danger mt-3">Logout</a>
+                    <h1 class="card-title display-5 mb-3">
+                        Welcome to the Blogging Platform, <strong>{{ user.username }}</strong>!
+                    </h1>
+
+                    <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
+                        <a href="{% url 'posts:post-list' %}" class="btn btn-success">View All Posts</a>
+                        <a href="{% url 'posts:post-create' %}" class="btn btn-primary">Create Post</a>
+                        <a href="{% url 'users:logout' %}" class="btn btn-danger">Logout</a>
                     </div>
                 </div>
             </div>
@@ -18,6 +23,4 @@
     </div>
 </div>
 {% endblock %}
-
-
 

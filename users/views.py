@@ -15,6 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.contrib.auth import get_user_model, authenticate, login
+from django.contrib.auth import get_user_model, login as django_login, logout as django_logout
 from django.contrib.auth.decorators import login_required
 
 
@@ -45,6 +46,7 @@ def signup_view(request):
 
 User = get_user_model()
 
+
 def login_view(request):
     if request.method == "POST":
         email = request.POST.get("email")
@@ -64,13 +66,17 @@ def login_view(request):
             messages.error(request, constants.INVALID_EMAIL_MESSAGE)
             return render(request, "users/login.html")
 
-        
+        # JWT tokens
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
+        # Set JWT cookies
         response = redirect("users:dashboard")
         response.set_cookie("access_token", access_token, httponly=True, samesite="Strict")
         response.set_cookie("refresh_token", str(refresh), httponly=True, samesite="Strict")
+
+        
+        django_login(request, user)
 
         messages.success(request, constants.LOG_IN_SUCCESS_MESSAGE)
         return response
@@ -79,12 +85,15 @@ def login_view(request):
 
 
 def logout_view(request):
+    # Logout from Django session
+    django_logout(request)
+
+    # Clear JWT cookies
     response = redirect("users:login")
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     messages.success(request, constants.LOGOUT_SUCCESS_MESSAGE)
     return response
-
 
 
 @jwt_login_required
