@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'django_extensions',
     'posts',
+    'django.contrib.postgres',
+
 ]
 
 MIDDLEWARE = [
@@ -159,3 +161,6 @@ LOGIN_URL = '/users/login/'
 
 # Redirect after successful login
 LOGIN_REDIRECT_URL = '/users/dashboard/'
+
+
+
