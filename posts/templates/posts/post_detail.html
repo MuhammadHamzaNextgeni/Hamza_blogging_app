@@ -2,11 +2,59 @@
 
 {% block content %}
 <div class="container mt-5">
+    <!-- Post Title and Info -->
     <h2>{{ post.title }}</h2>
     <p class="text-muted">By {{ post.author.username }} | {{ post.created_at|date:"M d, Y" }}</p>
     <hr>
     <p>{{ post.content }}</p>
 
+    <!-- Like Button -->
+    {% if user.is_authenticated %}
+        <form method="post" action="{% url 'posts:toggle_like' post.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">
+                {% if liked %}Unlike{% else %}Like{% endif %}
+            </button>
+            <span class="ms-2">{{ post.likes.count }} Likes</span>
+        </form>
+    {% else %}
+        <p><strong>{{ post.likes.count }} Likes</strong> 
+        (<a href="{% url 'login' %}">Login</a> to like)</p>
+    {% endif %}
+
+    <!-- Comment Section -->
+    <div class="mt-4">
+        <h4>Comments ({{ post.comments.count }})</h4>
+
+        <!-- Comment List -->
+        <ul class="list-group mb-3">
+            {% for comment in comments %}
+                <li class="list-group-item">
+                    <strong>{{ comment.user.username }}</strong> 
+                    <small class="text-muted">{{ comment.created_at|date:"M d, Y H:i" }}</small>
+                    <p>{{ comment.content }}</p>
+                </li>
+            {% empty %}
+                <li class="list-group-item">No comments yet.</li>
+            {% endfor %}
+        </ul>
+
+        <!-- Add Comment Form -->
+        {% if user.is_authenticated %}
+            <form method="post" action="{% url 'posts:add_comment' post.id %}">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-success">Add Comment</button>
+            </form>
+        {% else %}
+            <p><a href="{% url 'login' %}">Login</a> to add a comment.</p>
+        {% endif %}
+    </div>
+
+    <!-- Back Button -->
     <a href="{% url 'posts:post-list' %}" class="btn btn-secondary mt-3">Back to All Posts</a>
 </div>
 {% endblock %}
+
+
+
