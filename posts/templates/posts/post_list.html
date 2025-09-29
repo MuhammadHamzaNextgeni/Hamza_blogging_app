@@ -42,6 +42,8 @@
             <div class="col-12 d-flex gap-2 mt-2">
                 <button type="submit" class="btn btn-primary">Apply</button>
                 <a href="{% url 'posts:post-list' %}" class="btn btn-secondary">Reset</a>
+                <!-- My Posts Button -->
+                <a href="?my_posts=1{% for key, value in request.GET.items %}{% if key != 'my_posts' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="btn btn-info">My Posts</a>
             </div>
         </div>
     </form>
@@ -99,7 +101,7 @@
                 <ul class="pagination justify-content-center">
                     {% if page_obj.has_previous %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.title %}&title={{ request.GET.title }}{% endif %}{% if request.GET.author %}&author={{ request.GET.author }}{% endif %}{% if request.GET.content %}&content={{ request.GET.content }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}">Previous</a>
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.title %}&title={{ request.GET.title }}{% endif %}{% if request.GET.author %}&author={{ request.GET.author }}{% endif %}{% if request.GET.content %}&content={{ request.GET.content }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.my_posts %}&my_posts={{ request.GET.my_posts }}{% endif %}">Previous</a>
                         </li>
                     {% endif %}
 
@@ -109,7 +111,7 @@
 
                     {% if page_obj.has_next %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.title %}&title={{ request.GET.title }}{% endif %}{% if request.GET.author %}&author={{ request.GET.author }}{% endif %}{% if request.GET.content %}&content={{ request.GET.content }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}">Next</a>
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.title %}&title={{ request.GET.title }}{% endif %}{% if request.GET.author %}&author={{ request.GET.author }}{% endif %}{% if request.GET.content %}&content={{ request.GET.content }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.my_posts %}&my_posts={{ request.GET.my_posts }}{% endif %}">Next</a>
                         </li>
                     {% endif %}
                 </ul>

@@ -1,0 +1,24 @@
+<li class="list-group-item">
+    <strong>{{ comment.user.username }}</strong> 
+    <small class="text-muted">{{ comment.created_at|date:"M d, Y H:i" }}</small>
+    <p>{{ comment.content }}</p>
+
+    <!-- Reply Form -->
+    {% if user.is_authenticated %}
+        <form method="post" action="{% url 'posts:add_comment' post.id %}" class="mt-2">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input type="hidden" name="parent_id" value="{{ comment.id }}">
+            <button type="submit" class="btn btn-sm btn-outline-success">Reply</button>
+        </form>
+    {% endif %}
+
+    <!-- Nested Replies -->
+    {% if comment.replies.all %}
+        <ul class="list-group ms-4 mt-2">
+            {% for reply in comment.replies.all %}
+                {% include "posts/comment_item.html" with comment=reply %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</li>

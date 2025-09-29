@@ -20,8 +20,8 @@ urlpatterns = [
     path("api/<int:pk>/", PostDetailAPI.as_view(), name="api-post-detail"),
     path("api/<int:pk>/update/", PostUpdateAPI.as_view(), name="api-post-update"),
     path("api/<int:pk>/delete/", PostDeleteAPI.as_view(), name="api-post-delete"),
-    path('api/posts/<int:post_pk>/comments/', PostCommentCreateAPI.as_view(), name='api-comment-create'),
-    path('api/posts/<int:post_pk>/like/', PostToggleLikeAPI.as_view(), name='api-toggle-like'),
+    path('api/<int:post_pk>/comments/', PostCommentCreateAPI.as_view(), name='api-comment-create'),
+    path('api/<int:post_pk>/like/', PostToggleLikeAPI.as_view(), name='api-toggle-like'),
 
 ]
 
