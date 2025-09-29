@@ -1,6 +1,6 @@
 from django.db.models import Q
-from .models import Post
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+from .models import Post
 
 class PostFilter:
     def __init__(self, params, queryset=None):
@@ -22,10 +22,26 @@ class PostFilter:
         if author:
             queryset = queryset.filter(author__username__istartswith=author)
         if content:
-            queryset = queryset.filter(content__icontains=content)
+            search_vector = SearchVector("title", "content")
+            search_query = SearchQuery(content)
+
+            queryset = (
+                queryset
+                .annotate(rank=SearchRank(search_vector, search_query))
+                .filter(rank__gte=0.1)
+                .order_by("-rank", "-created_at")
+            )
+
+            
+            if not queryset.exists():
+                queryset = self.queryset.filter(
+                    Q(title__icontains=content) | Q(content__icontains=content)
+                )
+
         if start_date:
             queryset = queryset.filter(created_at__date__gte=start_date)
         if end_date:
             queryset = queryset.filter(created_at__date__lte=end_date)
 
         return queryset.order_by("-created_at")
+

@@ -22,10 +22,84 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
-
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .serializers import CustomTokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserSerializer  
 
 # Create your views here.
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        data = response.data
+
+        refresh_token = data.get("refresh")
+        access_token = data.get("access")
+
+        if refresh_token and access_token:
+            # Set HttpOnly cookies
+            response.set_cookie(
+                key="access_token",
+                value=access_token,
+                httponly=True,
+                secure=True,  
+                samesite="Strict",
+                max_age=30*60  
+            )
+            response.set_cookie(
+                key="refresh_token",
+                value=refresh_token,
+                httponly=True,
+                secure=True,
+                samesite="Strict",
+                max_age=5*24*60*60  
+            )
+
+            # Remove tokens from response body
+            response.data = {"detail": "Login successful"}
+
+        return response
+
+
+# --------------------
+# REFRESH VIEW: uses cookie to refresh access token
+# --------------------
+class CustomTokenRefreshView(TokenRefreshView):
+    serializer_class = TokenRefreshSerializer
+
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response({"detail": "No refresh token cookie found"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        serializer = self.get_serializer(data={"refresh": refresh_token})
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        access_token = serializer.validated_data.get("access")
+
+        # Update access token cookie
+        response = Response({"detail": "Token refreshed successfully"}, status=status.HTTP_200_OK)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="Strict",
+            max_age=30*60  # match access token lifetime
+        )
+        return response
 
 def home_view(request):
     return render(request, "home.html")
@@ -51,14 +125,7 @@ def signup_view(request):
 
 User = get_user_model()
 
-User = get_user_model()
-
-User = get_user_model()
-
-
-from django.views.decorators.csrf import csrf_exempt
-
-@csrf_exempt  # Needed for API clients like Postman
+@csrf_exempt  
 def login_view(request):
     if request.method == "POST":
         import json
@@ -116,9 +183,7 @@ def login_view(request):
     return render(request, "users/login.html")
 
 
-# -------------------------------
-# Browser logout + API JSON logout
-# -------------------------------
+
 def logout_view(request):
     if request.content_type == "application/json":
         return JsonResponse({"message": constants.LOGOUT_SUCCESS_MESSAGE})
@@ -135,5 +200,14 @@ def dashboard_view(request):
     return render(request, "users/dashboard.html")
 
 
-
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  
+def get_user_by_id(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = UserSerializer(user)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Post, Comment, Like
 
-# Serializer for comments
+
 class CommentSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
 
@@ -22,3 +22,4 @@ class PostSerializer(serializers.ModelSerializer):
 
     def get_like_count(self, obj):
         return obj.likes.count()
+

@@ -26,20 +26,14 @@
     <div class="mt-4">
         <h4>Comments ({{ post.comments.count }})</h4>
 
-        <!-- Comment List -->
+        <!-- Top-level comments -->
         <ul class="list-group mb-3">
             {% for comment in comments %}
-                <li class="list-group-item">
-                    <strong>{{ comment.user.username }}</strong> 
-                    <small class="text-muted">{{ comment.created_at|date:"M d, Y H:i" }}</small>
-                    <p>{{ comment.content }}</p>
-                </li>
-            {% empty %}
-                <li class="list-group-item">No comments yet.</li>
+                {% include "posts/comment_item.html" with comment=comment %}
             {% endfor %}
         </ul>
 
-        <!-- Add Comment Form -->
+        <!-- Add Top-Level Comment Form -->
         {% if user.is_authenticated %}
             <form method="post" action="{% url 'posts:add_comment' post.id %}">
                 {% csrf_token %}
@@ -55,6 +49,9 @@
     <a href="{% url 'posts:post-list' %}" class="btn btn-secondary mt-3">Back to All Posts</a>
 </div>
 {% endblock %}
+
+
+
 
 
 

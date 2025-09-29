@@ -30,17 +30,25 @@ class PostListView(JWTLoginRequiredMixin, ListView):
     model = Post
     template_name = "posts/post_list.html"
     context_object_name = "posts"
-    paginate_by = 5
+    paginate_by = 6
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        # Use the PostFilter class
-        self.filterset = PostFilter(self.request.GET, queryset=Post.objects.all())
-        return self.filterset.qs  
+        queryset = Post.objects.all()
+        
+        
+        self.filterset = PostFilter(self.request.GET, queryset=queryset)
+        queryset = self.filterset.qs
+
+        
+        if self.request.GET.get("my_posts") == "1":
+            queryset = queryset.filter(author=self.request.user)
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["filter_params"] = self.request.GET 
+        context["filter_params"] = self.request.GET
         return context
 
 class PostCreateView(JWTLoginRequiredMixin, CreateView):
@@ -63,18 +71,18 @@ class PostDetailView(JWTLoginRequiredMixin, DetailView):
         post = self.get_object()
         user = self.request.user
 
-        # Comment form
+        # Comment form and like status
         if user.is_authenticated:
             context['form'] = CommentForm()
-            # Check if user liked this post
             context['liked'] = post.likes.filter(user=user).exists()
         else:
             context['form'] = None
             context['liked'] = False
 
-        # Pass all comments
-        context['comments'] = post.comments.all()
+        # Fetch only top-level comments, prefetch replies
+        context['comments'] = post.comments.filter(parent__isnull=True).prefetch_related('replies')
         return context
+
     
 class AddCommentView(JWTLoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
@@ -83,7 +91,12 @@ class AddCommentView(JWTLoginRequiredMixin, View):
         if form.is_valid():
             comment = form.save(commit=False)
             comment.post = post
-            comment.user = request.user  
+            comment.user = request.user
+
+            parent_id = request.POST.get('parent_id')
+            if parent_id:
+                comment.parent = Comment.objects.get(id=parent_id)  # attach to actual parent
+
             comment.save()
         return redirect("posts:post-detail", pk=pk)
 
@@ -110,7 +123,7 @@ class PostUpdateView(JWTLoginRequiredMixin, UpdateView):
         return obj
 
     def get_success_url(self):
-        # Redirect to the post detail page after updating
+
         return reverse("posts:post-detail", kwargs={"pk": self.object.pk})
 
 class PostDeleteView(JWTLoginRequiredMixin, DeleteView):
@@ -124,8 +137,6 @@ class PostDeleteView(JWTLoginRequiredMixin, DeleteView):
             raise PermissionDenied("You cannot delete someone else's post.")
         return obj
 
-
-# Below are the CRUD views for json 
 
 class PostListAPI(generics.ListAPIView):
     queryset = Post.objects.all().order_by("-created_at")
@@ -181,8 +192,12 @@ class PostCommentCreateAPI(generics.CreateAPIView):
     def perform_create(self, serializer):
         post_pk = self.kwargs.get('post_pk')
         post = get_object_or_404(Post, pk=post_pk)
-        serializer.save(user=self.request.user, post=post)
+        parent_id = self.request.data.get('parent_id')
 
+        parent_comment = None
+        if parent_id:
+            parent_comment = Comment.objects.get(id=parent_id)
+        serializer.save(user=self.request.user, post=post, parent=parent_comment)
 
 class PostToggleLikeAPI(APIView):
     permission_classes = [permissions.IsAuthenticated]
