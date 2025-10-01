@@ -24,6 +24,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from rest_framework.views import APIView
 from django.views import View
+from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 
 class PostListView(JWTLoginRequiredMixin, ListView):
@@ -35,12 +37,9 @@ class PostListView(JWTLoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = Post.objects.all()
-        
-        
         self.filterset = PostFilter(self.request.GET, queryset=queryset)
         queryset = self.filterset.qs
 
-        
         if self.request.GET.get("my_posts") == "1":
             queryset = queryset.filter(author=self.request.user)
 
@@ -50,6 +49,25 @@ class PostListView(JWTLoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["filter_params"] = self.request.GET
         return context
+
+
+User = get_user_model()   
+
+class AuthorSuggestionsView(View):
+    def get(self, request, *args, **kwargs):
+        q = request.GET.get("q", "").strip()
+
+        users = []
+        if q:
+            users = (
+                User.objects
+                .filter(username__istartswith=q)
+                .order_by("username")
+                .values_list("username", flat=True)[:10]
+            )
+
+        return JsonResponse({"results": list(users)})
+
 
 class PostCreateView(JWTLoginRequiredMixin, CreateView):
     model = Post
@@ -71,7 +89,7 @@ class PostDetailView(JWTLoginRequiredMixin, DetailView):
         post = self.get_object()
         user = self.request.user
 
-        # Comment form and like status
+        
         if user.is_authenticated:
             context['form'] = CommentForm()
             context['liked'] = post.likes.filter(user=user).exists()
@@ -95,7 +113,7 @@ class AddCommentView(JWTLoginRequiredMixin, View):
 
             parent_id = request.POST.get('parent_id')
             if parent_id:
-                comment.parent = Comment.objects.get(id=parent_id)  # attach to actual parent
+                comment.parent = Comment.objects.get(id=parent_id)  
 
             comment.save()
         return redirect("posts:post-detail", pk=pk)
@@ -209,3 +227,20 @@ class PostToggleLikeAPI(APIView):
             like.delete()
             return Response({"liked": False, "like_count": post.likes.count()})
         return Response({"liked": True, "like_count": post.likes.count()})
+    
+User = get_user_model()
+
+class AuthorSuggestionsAPI(View):
+    def get(self, request, *args, **kwargs):
+        q = request.GET.get("q", "").strip()
+
+        users = []
+        if q:
+            users = (
+                User.objects
+                .filter(username__istartswith=q)
+                .order_by("username")
+                .values("id", "username")[:10]   # include id + username
+            )
+
+        return JsonResponse({"results": list(users)})

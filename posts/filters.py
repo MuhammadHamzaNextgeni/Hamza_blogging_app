@@ -19,8 +19,12 @@ class PostFilter:
 
         if title:
             queryset = queryset.filter(title__istartswith=title)
+
         if author:
-            queryset = queryset.filter(author__username__istartswith=author)
+            author = author.lstrip("@").strip()   
+            if author:
+                queryset = queryset.filter(author__username__istartswith=author)
+
         if content:
             search_vector = SearchVector("title", "content")
             search_query = SearchQuery(content)
@@ -32,7 +36,6 @@ class PostFilter:
                 .order_by("-rank", "-created_at")
             )
 
-            
             if not queryset.exists():
                 queryset = self.queryset.filter(
                     Q(title__icontains=content) | Q(content__icontains=content)
@@ -44,4 +47,3 @@ class PostFilter:
             queryset = queryset.filter(created_at__date__lte=end_date)
 
         return queryset.order_by("-created_at")
-
