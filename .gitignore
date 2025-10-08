@@ -10,3 +10,6 @@ media/
 # Virtual environments
 venv/
 .env
+
+# Docker env
+.env.docker
