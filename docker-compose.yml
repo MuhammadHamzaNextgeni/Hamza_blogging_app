@@ -1,0 +1,64 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hamza_network
+
+  django_app:
+    build: .
+    container_name: django_app
+    env_file:
+      - .env.docker
+    environment:
+      - DOCKER=1
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - hamza_network
+    volumes:
+      - .:/app
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - hamza_network
+
+  celery:
+    build: .
+    container_name: celery_worker
+    env_file:
+      - .env.docker
+    command: celery -A core worker --loglevel=info
+    depends_on:
+      - django_app
+      - redis
+    networks:
+      - hamza_network
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:
+
+networks:
+  hamza_network:
+
+
