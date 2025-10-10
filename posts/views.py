@@ -26,6 +26,7 @@ from rest_framework.views import APIView
 from django.views import View
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
+from .constants import DELETE_POST_NOT_ALLOWED_MESSAGE,POST_DELETE_SUCCESS_MESSAGE,UPDATE_POST_NOT_ALLOWED_MESSAGE
 
 
 class PostListView(JWTLoginRequiredMixin, ListView):
@@ -137,7 +138,7 @@ class PostUpdateView(JWTLoginRequiredMixin, UpdateView):
         obj = super().get_object(queryset)
         if obj.author != self.request.user:
             from django.core.exceptions import PermissionDenied
-            raise PermissionDenied("You cannot update someone else's post.")
+            raise PermissionDenied(DELETE_POST_NOT_ALLOWED_MESSAGE)
         return obj
 
     def get_success_url(self):
@@ -152,7 +153,7 @@ class PostDeleteView(JWTLoginRequiredMixin, DeleteView):
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
         if obj.author != self.request.user:
-            raise PermissionDenied("You cannot delete someone else's post.")
+            raise PermissionDenied(DELETE_POST_NOT_ALLOWED_MESSAGE)
         return obj
 
 
@@ -182,7 +183,7 @@ class PostUpdateAPI(generics.RetrieveUpdateAPIView):
     def get_object(self):
         obj = super().get_object()
         if obj.author != self.request.user:
-            raise PermissionDenied("You cannot update someone else's post.")
+            raise PermissionDenied(UPDATE_POST_NOT_ALLOWED_MESSAGE)
         return obj
 
 class PostDeleteAPI(generics.DestroyAPIView):
@@ -194,13 +195,13 @@ class PostDeleteAPI(generics.DestroyAPIView):
     def get_object(self):
         obj = super().get_object()
         if obj.author != self.request.user:
-            raise PermissionDenied("You cannot delete someone else's post.")
+            raise PermissionDenied(DELETE_POST_NOT_ALLOWED_MESSAGE)
         return obj
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
-        return Response({"detail": "Post deleted successfully."}, status=status.HTTP_200_OK)
+        return Response({"detail": POST_DELETE_SUCCESS_MESSAGE}, status=status.HTTP_200_OK)
     
 
 class PostCommentCreateAPI(generics.CreateAPIView):
@@ -240,7 +241,7 @@ class AuthorSuggestionsAPI(View):
                 User.objects
                 .filter(username__istartswith=q)
                 .order_by("username")
-                .values("id", "username")[:10]   # include id + username
+                .values("id", "username")[:10]   
             )
 
         return JsonResponse({"results": list(users)})
