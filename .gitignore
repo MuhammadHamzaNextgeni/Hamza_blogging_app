@@ -5,6 +5,7 @@ __pycache__/
 # Django
 db.sqlite3
 *.log
+app.log
 media/
 
 # Virtual environments
@@ -13,3 +14,4 @@ venv/
 
 # Docker env
 .env.docker
+
