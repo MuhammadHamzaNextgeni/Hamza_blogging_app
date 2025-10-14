@@ -31,6 +31,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .serializers import UserSerializer  
+from logger import logger  
+
 
 # Create your views here.
 
@@ -64,7 +66,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             )
 
             # Remove tokens from response body
-            response.data = {"detail": "Login successful"}
+            response.data = {"detail": constants.LOG_IN_SUCCESS_MESSAGE}
 
         return response
 
@@ -78,7 +80,7 @@ class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get("refresh_token")
         if not refresh_token:
-            return Response({"detail": "No refresh token cookie found"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"detail": constants.REFRESH_COOKIE_TOKEN_NOT_FOUND_MESSAGE}, status=status.HTTP_401_UNAUTHORIZED)
 
         serializer = self.get_serializer(data={"refresh": refresh_token})
 
@@ -90,14 +92,14 @@ class CustomTokenRefreshView(TokenRefreshView):
         access_token = serializer.validated_data.get("access")
 
         # Update access token cookie
-        response = Response({"detail": "Token refreshed successfully"}, status=status.HTTP_200_OK)
+        response = Response({"detail": constants.TOKEN_REFRESH_SUCCESS_MESSAGE}, status=status.HTTP_200_OK)
         response.set_cookie(
             key="access_token",
             value=access_token,
             httponly=True,
             secure=True,
             samesite="Strict",
-            max_age=30*60  # match access token lifetime
+            max_age=30*60  
         )
         return response
 
@@ -109,16 +111,14 @@ def signup_view(request):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, constants.ACCOUNT_CREATION_SUCCESS_MESSAGE)  
-            
-            # Redirect to login page after successful registration
+            logger.info(constants.NEW_USER_CREATED_MESSAGE )  
+            messages.success(request, constants.ACCOUNT_CREATION_SUCCESS_MESSAGE)
             return redirect("users:login")
-
         else:
-            print(form.errors)  
+            logger.error(f"Signup failed: {form.errors}")   
     else:
         form = CustomUserCreationForm()
-    
+
     return render(request, "users/signup.html", {"form": form})
 
 
@@ -130,7 +130,6 @@ def login_view(request):
     if request.method == "POST":
         import json
 
-        # Detect if JSON body is sent
         if request.content_type == "application/json":
             data = json.loads(request.body)
             email = data.get("email")
@@ -140,6 +139,7 @@ def login_view(request):
             password = request.POST.get("password")
 
         if not email or not password:
+            logger.error(constants.ENTER_EMAIL_PASSWORD_MESSAGE)  
             if request.content_type == "application/json":
                 return JsonResponse({"error": constants.ENTER_EMAIL_PASSWORD_MESSAGE}, status=400)
             messages.error(request, constants.ENTER_EMAIL_PASSWORD_MESSAGE)
@@ -148,22 +148,24 @@ def login_view(request):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
+            logger.error(f"Login failed: No account found for {email}")  
             if request.content_type == "application/json":
                 return JsonResponse({"error": constants.NO_ACCOUNT_FOUND}, status=404)
             messages.error(request, constants.NO_ACCOUNT_FOUND)
             return render(request, "users/login.html")
 
         if not user.check_password(password):
+            logger.error(f"{constants.ACCOUNT_NOT_FOUND_ERROR_MESSAGE} {email}") 
             if request.content_type == "application/json":
                 return JsonResponse({"error": constants.INVALID_EMAIL_MESSAGE}, status=400)
             messages.error(request, constants.INVALID_EMAIL_MESSAGE)
             return render(request, "users/login.html")
 
-        # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
-        # Browser response
+        logger.info(f"{constants.LOG_IN_SUCCESS_MESSAGE}: {email}") 
+
         if request.content_type != "application/json":
             response = redirect("users:dashboard")
             response.set_cookie("access_token", access_token, httponly=True, samesite="Strict")
@@ -171,14 +173,11 @@ def login_view(request):
             messages.success(request, constants.LOG_IN_SUCCESS_MESSAGE)
             return response
 
-        # JSON response for API clients
-        return JsonResponse(
-            {
-                "access": access_token,
-                "refresh": str(refresh),
-                "message": constants.LOG_IN_SUCCESS_MESSAGE,
-            }
-        )
+        return JsonResponse({
+            "access": access_token,
+            "refresh": str(refresh),
+            "message": constants.LOG_IN_SUCCESS_MESSAGE,
+        })
 
     return render(request, "users/login.html")
 
@@ -186,17 +185,21 @@ def login_view(request):
 
 def logout_view(request):
     if request.content_type == "application/json":
+        logger.info(constants.LOGOUT_SUCCESS_MESSAGE)  
         return JsonResponse({"message": constants.LOGOUT_SUCCESS_MESSAGE})
     
     response = redirect("users:login")
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
+    logger.info(constants.COOKIES_CLEARED_MESSAGE)  
     messages.success(request, constants.LOGOUT_SUCCESS_MESSAGE)
     return response
 
 
+
 @jwt_login_required
 def dashboard_view(request):
+    logger.info(constants.USER_REDIRECTS_TO_DASHBOARD)
     return render(request, "users/dashboard.html")
 
 
@@ -205,8 +208,10 @@ def dashboard_view(request):
 def get_user_by_id(request, user_id):
     try:
         user = User.objects.get(id=user_id)
+        logger.info(f"Fetched user with ID: {user_id}")
     except User.DoesNotExist:
-        return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        logger.error(f"User with ID {user_id} not found") 
+        return Response({"detail": constants.USER_NOT_FOUND_MESSAGE}, status=status.HTTP_404_NOT_FOUND)
     
     serializer = UserSerializer(user)
     return Response(serializer.data, status=status.HTTP_200_OK)

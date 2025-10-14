@@ -26,7 +26,8 @@ from rest_framework.views import APIView
 from django.views import View
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
-from .constants import DELETE_POST_NOT_ALLOWED_MESSAGE,POST_DELETE_SUCCESS_MESSAGE,UPDATE_POST_NOT_ALLOWED_MESSAGE
+from logger import logger  
+from .constants import DELETE_POST_NOT_ALLOWED_MESSAGE,POST_DELETE_SUCCESS_MESSAGE,UPDATE_POST_NOT_ALLOWED_MESSAGE,NEW_POST_CREATED_MESSAGE,NEW_COMMENT_ADDED_MESSAGE,POST_LIKE_MESSAGE,POST_UNLIKE_MESSAGE,POST_UPDATE_SUCCESS_MESSAGE,UNAUTHORIZED_DELETE_MESSAGE,UNAUTHORIZED_UPDATE_MESSAGE 
 
 
 class PostListView(JWTLoginRequiredMixin, ListView):
@@ -78,7 +79,9 @@ class PostCreateView(JWTLoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.author = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        logger.info(f"{NEW_POST_CREATED_MESSAGE} {self.request.user}: {form.instance.title}") 
+        return response
 
 class PostDetailView(JWTLoginRequiredMixin, DetailView):
     model = Post
@@ -90,7 +93,6 @@ class PostDetailView(JWTLoginRequiredMixin, DetailView):
         post = self.get_object()
         user = self.request.user
 
-        
         if user.is_authenticated:
             context['form'] = CommentForm()
             context['liked'] = post.likes.filter(user=user).exists()
@@ -100,6 +102,9 @@ class PostDetailView(JWTLoginRequiredMixin, DetailView):
 
         # Fetch only top-level comments, prefetch replies
         context['comments'] = post.comments.filter(parent__isnull=True).prefetch_related('replies')
+
+        logger.info(f"Post viewed: '{post.title}' by user: {user if user.is_authenticated else 'Anonymous'}")
+
         return context
 
     
@@ -107,6 +112,7 @@ class AddCommentView(JWTLoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
         post = get_object_or_404(Post, pk=pk)
         form = CommentForm(request.POST)
+
         if form.is_valid():
             comment = form.save(commit=False)
             comment.post = post
@@ -114,9 +120,13 @@ class AddCommentView(JWTLoginRequiredMixin, View):
 
             parent_id = request.POST.get('parent_id')
             if parent_id:
-                comment.parent = Comment.objects.get(id=parent_id)  
-
+                comment.parent = Comment.objects.get(id=parent_id)
             comment.save()
+            logger.info(f"{NEW_COMMENT_ADDED_MESSAGE} {request.user} on post '{post.title}'")
+
+        else:
+            logger.warning(f"Invalid comment form by {request.user} on post '{post.title}'")
+
         return redirect("posts:post-detail", pk=pk)
 
 
@@ -124,37 +134,53 @@ class ToggleLikeView(JWTLoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
         post = get_object_or_404(Post, pk=pk)
         like, created = post.likes.get_or_create(user=request.user)
-        if not created:
+
+        if created:
+            logger.info(f"{POST_LIKE_MESSAGE} {request.user}: '{post.title}'")
+        else:
             like.delete()
+            logger.info(f"{POST_UNLIKE_MESSAGE} {request.user}: '{post.title}'")
+
         return redirect("posts:post-detail", pk=pk)
 
 
 class PostUpdateView(JWTLoginRequiredMixin, UpdateView):
     model = Post
-    template_name = "posts/post_update.html"  
+    template_name = "posts/post_update.html"
     fields = ["title", "content"]
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
         if obj.author != self.request.user:
             from django.core.exceptions import PermissionDenied
+            logger.warning(f"{UNAUTHORIZED_UPDATE_MESSAGE} attempt by {self.request.user} on post '{obj.title}'")
             raise PermissionDenied(DELETE_POST_NOT_ALLOWED_MESSAGE)
         return obj
 
-    def get_success_url(self):
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        logger.info(f"{POST_UPDATE_SUCCESS_MESSAGE} {self.request.user}: '{self.object.title}'")
+        return response
 
+    def get_success_url(self):
         return reverse("posts:post-detail", kwargs={"pk": self.object.pk})
 
 class PostDeleteView(JWTLoginRequiredMixin, DeleteView):
     model = Post
-    template_name = "posts/post_confirm_delete.html"  
+    template_name = "posts/post_confirm_delete.html"
     success_url = reverse_lazy("posts:post-list")
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
         if obj.author != self.request.user:
+            logger.warning(f"{UNAUTHORIZED_DELETE_MESSAGE} attempt by {self.request.user} on post '{obj.title}'")
             raise PermissionDenied(DELETE_POST_NOT_ALLOWED_MESSAGE)
         return obj
+
+    def delete(self, request, *args, **kwargs):
+        obj = self.get_object()
+        logger.info(f"Post deleted by {request.user}: '{obj.title}'")
+        return super().delete(request, *args, **kwargs)
 
 
 class PostListAPI(generics.ListAPIView):
